@@ -213,7 +213,8 @@ icoder/
 │
 ├── manage.py                 # Django management script
 ├── requirements.txt          # Python dependencies
-├── README.md                 # This file
+├── README.md                  # This file
+├── vercel.json             
 └── .gitignore               # Git ignore rules
 ```
 
