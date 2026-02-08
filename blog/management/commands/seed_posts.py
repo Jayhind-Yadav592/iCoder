@@ -1,62 +1,47 @@
 from django.core.management.base import BaseCommand
-from blog.models import Post, Profile
+from blog.models import Post
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 from django.utils import timezone
+from django.core.files import File
+import os
 
 class Command(BaseCommand):
-    help = "Insert default blog posts with avatar & thumbnail"
+    help = "Insert default blog posts with images"
 
     def handle(self, *args, **kwargs):
 
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        media_path = os.path.join(base_dir, "media", "blog_thumbnails")
+
         posts = [
-            {
-                "title": "Introduction to Python",
-                "author": "Amit Verma",
-                "content": "Python is a beginner friendly programming language.",
-                "avatar": "avatars/amit.png",
-                "thumbnail": "blog_thumbnails/python.png"
-            },
-            {
-                "title": "Django vs Flask",
-                "author": "Rahul Sharma",
-                "content": "Django full framework hai, Flask micro framework.",
-                "avatar": "avatars/rahul.png",
-                "thumbnail": "blog_thumbnails/django.png"
-            },
-            {
-                "title": "What is API?",
-                "author": "Ram Singh",
-                "content": "API do applications ko connect karta hai.",
-                "avatar": "avatars/ram.png",
-                "thumbnail": "blog_thumbnails/api.png"
-            },
+            ("Introduction to Python", "python.png"),
+            ("Django vs Flask", "django.png"),
+            ("What is API?", "api.png"),
         ]
 
-        for p in posts:
+        user, _ = User.objects.get_or_create(username="admin")
+        user.set_password("admin123")
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
 
-            # create user
-            user, created = User.objects.get_or_create(username=p["author"])
+        for title, image_name in posts:
 
-            if created:
-                user.set_password("12345")
-                user.save()
+            image_full_path = os.path.join(media_path, image_name)
 
-            # update avatar
-            profile = Profile.objects.get(user=user)
-            profile.avatar = p["avatar"]
-            profile.save()
-
-            # create post
-            Post.objects.get_or_create(
-                slug=slugify(p["title"]),
+            post, created = Post.objects.get_or_create(
+                slug=slugify(title),
                 defaults={
-                    "title": p["title"],
+                    "title": title,
                     "author": user,
-                    "content": p["content"],
+                    "content": "Auto generated post",
                     "timeStamp": timezone.now(),
-                    "thumbnail": p["thumbnail"]
                 }
             )
 
-        self.stdout.write(self.style.SUCCESS("Posts inserted successfully!"))
+            if created and os.path.exists(image_full_path):
+                with open(image_full_path, "rb") as img:
+                    post.thumbnail.save(image_name, File(img), save=True)
+
+        self.stdout.write(self.style.SUCCESS("Posts inserted successfully with images"))
